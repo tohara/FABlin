@@ -192,9 +192,9 @@
     //#define  DEFAULT_Ki 1.05
     //#define  DEFAULT_Kd 170
     
-    #define  DEFAULT_Kp 15
-    #define  DEFAULT_Ki 5
-    #define  DEFAULT_Kd 30
+    #define  DEFAULT_Kp 20.0 //15
+    #define  DEFAULT_Ki 4.0 //5
+    #define  DEFAULT_Kd 40.0 //30
 
 // MakerGear
 //    #define  DEFAULT_Kp 7.0
@@ -409,14 +409,14 @@ extern bool Z_MAX_ENDSTOP_INVERTING;
   //#define Z_PROBE_OFFSET_FROM_EXTRUDER -50.6
   #define X_PROBE_OFFSET_FROM_EXTRUDER -17
   #define Y_PROBE_OFFSET_FROM_EXTRUDER -61.5
-  #define Z_PROBE_OFFSET_FROM_EXTRUDER -34.65
+  #define Z_PROBE_OFFSET_FROM_EXTRUDER -28.75 //-34.65
 
-  #define Z_RAISE_BEFORE_HOMING 42       // (in mm) Raise Z before homing (G28) for Probe Clearance.
+  #define Z_RAISE_BEFORE_HOMING 47       // (in mm) Raise Z before homing (G28) for Probe Clearance.
                                         // Be sure you have this distance over your Z_MAX_POS in case
 
   #define XY_TRAVEL_SPEED 10000         // X and Y axis travel speed between probes, in mm/min
 
-  #define Z_RAISE_BEFORE_PROBING 42    //How much the extruder will be raised before traveling to the first probing point.
+  #define Z_RAISE_BEFORE_PROBING 47    //How much the extruder will be raised before traveling to the first probing point.
   #define Z_RAISE_BETWEEN_PROBINGS 5  //How much the extruder will be raised when traveling from between next probing points
 
 
