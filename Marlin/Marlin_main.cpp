@@ -2355,7 +2355,7 @@ void process_commands()
       if(setTargetedHotend(105)){
         break;
         }
-      #if defined(TEMP_0_PIN) && TEMP_0_PIN > -1
+      #if (defined(TEMP_0_PIN) && TEMP_0_PIN > -1) || defined(HEATER_0_USES_NANOPROTO)
         SERIAL_PROTOCOLPGM("ok T:");
         SERIAL_PROTOCOL_F(degHotend(tmp_extruder),1);
         SERIAL_PROTOCOLPGM(" /");

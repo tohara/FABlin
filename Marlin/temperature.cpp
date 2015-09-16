@@ -1077,6 +1077,106 @@ int read_max6675()
 }
 #endif
 
+byte SPI_transfer(byte value) {
+  SPDR = value;
+  while(!(SPSR & (1<<SPIF)));
+  return SPDR;
+}
+
+#ifdef HEATER_0_USES_NANOPROTO
+#define NANOPROTO_HEAT_INTERVAL 200
+long nanoProto_previous_millis = 0;
+int nanoProto_temp = 140;
+
+int read_nanoProto()
+{
+  if (millis() - nanoProto_previous_millis < NANOPROTO_HEAT_INTERVAL)
+    return nanoProto_temp;
+
+  pinMode(SCK, OUTPUT);
+  pinMode(MOSI, OUTPUT);
+  pinMode(MISO, INPUT);
+
+  nanoProto_previous_millis = millis();
+  nanoProto_temp = 0;
+
+  #ifdef	PRR
+    PRR &= ~(1<<PRSPI);
+  #elif defined PRR0
+    PRR0 &= ~(1<<PRSPI);
+  #endif
+
+  const unsigned int del = 100;
+
+  SPCR = (1<<MSTR) | (1<<SPE) | (1<<SPR0);
+
+  delayMicroseconds(del);
+  SPI_transfer(0xff); // initiate transaction
+  delayMicroseconds(del);
+
+
+  SPI_transfer(10); // request Temp_E0
+
+  delayMicroseconds(del);
+
+  byte byteLSB = SPI_transfer(0); //read LSB
+
+  delayMicroseconds(del);
+
+  byte byteMSB = SPI_transfer(0); //read MSB
+
+  delayMicroseconds(del);
+
+  SPI_transfer(0xfe); // End transaction
+  delayMicroseconds(del);
+  SPCR &= ~_BV(SPE);
+
+  nanoProto_temp = (byteLSB | byteMSB << 8);
+
+  return nanoProto_temp;
+}
+
+void write_nanoProto(byte pwm){
+
+	pinMode(SCK, OUTPUT);
+	pinMode(MOSI, OUTPUT);
+	pinMode(MISO, INPUT);
+
+
+	#ifdef	PRR
+	PRR &= ~(1<<PRSPI);
+	#elif defined PRR0
+	PRR0 &= ~(1<<PRSPI);
+	#endif
+
+	const unsigned int del = 100;
+
+	SPCR = (1<<MSTR) | (1<<SPE) | (1<<SPR0);
+
+	delayMicroseconds(del);
+	SPI_transfer(0xff); // initiate transaction
+	delayMicroseconds(del);
+
+
+	SPI_transfer(22); // request Temp_E0
+
+	delayMicroseconds(del);
+
+	SPI_transfer(pwm); //write LSB
+
+	delayMicroseconds(del);
+
+	SPI_transfer(0); //write MSB
+
+	delayMicroseconds(del);
+
+	SPI_transfer(0xfe); // End transaction
+	delayMicroseconds(del);
+	SPCR &= ~_BV(SPE);
+
+}
+
+#endif
 
 
 /*void write_LaserSoftPwm_t(unsigned int LaserSoftPwm_value)
@@ -1143,14 +1243,16 @@ ISR(TIMER0_COMPB_vect)
   #endif
   
   if(pwm_count == 0){
-    soft_pwm_0 = soft_pwm[0];
-    if(soft_pwm_0 > 0) { 
-      WRITE(HEATER_0_PIN,1);
-      #ifdef HEATERS_PARALLEL
-      WRITE(HEATER_1_PIN,1);
-      #endif
-    } else WRITE(HEATER_0_PIN,0);
-	
+	#if defined(HEATER_0_PIN) && (HEATER_0_PIN > -1)
+		soft_pwm_0 = soft_pwm[0];
+		if(soft_pwm_0 > 0) {
+		  WRITE(HEATER_0_PIN,1);
+		  #ifdef HEATERS_PARALLEL
+		  WRITE(HEATER_1_PIN,1);
+		  #endif
+		} else WRITE(HEATER_0_PIN,0);
+	#endif
+
     #if EXTRUDERS > 1
     soft_pwm_1 = soft_pwm[1];
     if(soft_pwm_1 > 0) WRITE(HEATER_1_PIN,1); else WRITE(HEATER_1_PIN,0);
@@ -1168,12 +1270,21 @@ ISR(TIMER0_COMPB_vect)
     if(soft_pwm_fan > 0) WRITE(FAN_PIN,1); else WRITE(FAN_PIN,0);
     #endif
   }
+
+  #ifdef HEATER_0_USES_NANOPROTO
+  	  write_nanoProto(soft_pwm[0]);
+  #endif
+
+
+  #if defined(HEATER_0_PIN) && (HEATER_0_PIN > -1)
   if(soft_pwm_0 < pwm_count) { 
       WRITE(HEATER_0_PIN,0);
       #ifdef HEATERS_PARALLEL
       WRITE(HEATER_1_PIN,0);
       #endif
     }
+  #endif
+
   #if EXTRUDERS > 1
   if(soft_pwm_1 < pwm_count) WRITE(HEATER_1_PIN,0);
   #endif
@@ -1207,6 +1318,9 @@ ISR(TIMER0_COMPB_vect)
     case 1: // Measure TEMP_0
       #if defined(TEMP_0_PIN) && (TEMP_0_PIN > -1)
         raw_temp_0_value += ADC;
+      #endif
+	  #ifdef HEATER_0_USES_NANOPROTO
+        raw_temp_0_value += read_nanoProto();
       #endif
       #ifdef HEATER_0_USES_MAX6675 // TODO remove the blocking
         raw_temp_0_value = read_max6675();

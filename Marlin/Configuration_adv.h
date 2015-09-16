@@ -494,5 +494,6 @@ const unsigned int dropsegments=5; //everything with less than this number of st
   #undef BED_MAXTEMP
 #endif
 
+#define HEATER_0_USES_NANOPROTO
 
 #endif //__CONFIGURATION_ADV_H
