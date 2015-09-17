@@ -1089,7 +1089,7 @@ long nanoProto_previous_millis = 0;
 int nanoProto_temp = 140;
 enum nanoProtoCode {TEMP_E0 = 10, TEMP_E1, HEATER_E0 = 20, FAN, HEATER_E1};
 
-int transfer_nanoProto(nanoProtoCode code, byte value = 0)
+int transfer_nanoProto(byte code, byte value = 0)
 {
 
 	static int tempE0 = 140;
@@ -1100,11 +1100,11 @@ int transfer_nanoProto(nanoProtoCode code, byte value = 0)
 
   if (millis() - nanoProto_previous_millis < NANOPROTO_HEAT_INTERVAL){
 	  switch(code){
-		  case TEMP_E0: return tempE0; break;
-		  case TEMP_E1: return tempE1; break;
-		  case HEATER_E0: heaterE0 = value; break;
-		  case FAN: fanSpeed = value; break;
-		  case HEATER_E1: heaterE1 = value; break;
+		  case 10: return tempE0; break;
+		  case 11: return tempE1; break;
+		  case 20: heaterE0 = value; break;
+		  case 21: fanSpeed = value; break;
+		  case 22: heaterE1 = value; break;
 	  }
 	  return 0;
   }
@@ -1151,11 +1151,11 @@ int transfer_nanoProto(nanoProtoCode code, byte value = 0)
   tempE0 = (byteLSB | byteMSB << 8);
 
   switch(code){
-	case TEMP_E0: return tempE0; break;
-	case TEMP_E1: return tempE1; break;
-	case HEATER_E0: heaterE0 = value; break;
-	case FAN: fanSpeed = value; break;
-	case HEATER_E1: heaterE1 = value; break;
+  	  case 10: return tempE0; break;
+	  case 11: return tempE1; break;
+	  case 20: heaterE0 = value; break;
+	  case 21: fanSpeed = value; break;
+	  case 22: heaterE1 = value; break;
   }
   return 0;
 }
@@ -1304,7 +1304,7 @@ ISR(TIMER0_COMPB_vect)
         raw_temp_0_value += ADC;
       #endif
 	  #ifdef HEATER_0_USES_NANOPROTO
-        raw_temp_0_value += transfer_nanoProto(TEMP_E0);
+        raw_temp_0_value += transfer_nanoProto(10);
       #endif
       #ifdef HEATER_0_USES_MAX6675 // TODO remove the blocking
         raw_temp_0_value = read_max6675();
