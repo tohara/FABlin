@@ -1087,18 +1087,35 @@ byte SPI_transfer(byte value) {
 #define NANOPROTO_HEAT_INTERVAL 200
 long nanoProto_previous_millis = 0;
 int nanoProto_temp = 140;
+enum nanoProtoCode {TEMP_E0 = 10, TEMP_E1, HEATER_E0 = 20, FAN, HEATER_E1};
 
-int read_nanoProto()
+int transfer_nanoProto(nanoProtoCode code, byte value = 0)
 {
-  if (millis() - nanoProto_previous_millis < NANOPROTO_HEAT_INTERVAL)
-    return nanoProto_temp;
+
+	static int tempE0 = 140;
+	static int tempE1 = 140;
+	static byte heaterE0 = 0;
+	static byte fanSpeed = 0;
+	static byte heaterE1 = 0;
+
+  if (millis() - nanoProto_previous_millis < NANOPROTO_HEAT_INTERVAL){
+	  switch(code){
+		  case TEMP_E0: return tempE0; break;
+		  case TEMP_E1: return tempE1; break;
+		  case HEATER_E0: heaterE0 = value; break;
+		  case FAN: fanSpeed = value; break;
+		  case HEATER_E1: heaterE1 = value; break;
+	  }
+	  return 0;
+  }
+
+  nanoProto_previous_millis = millis();
 
   pinMode(SCK, OUTPUT);
   pinMode(MOSI, OUTPUT);
   pinMode(MISO, INPUT);
 
-  nanoProto_previous_millis = millis();
-  nanoProto_temp = 0;
+
 
   #ifdef	PRR
     PRR &= ~(1<<PRSPI);
@@ -1131,49 +1148,16 @@ int read_nanoProto()
   delayMicroseconds(del);
   SPCR &= ~_BV(SPE);
 
-  nanoProto_temp = (byteLSB | byteMSB << 8);
+  tempE0 = (byteLSB | byteMSB << 8);
 
-  return nanoProto_temp;
-}
-
-void write_nanoProto(byte pwm){
-
-	pinMode(SCK, OUTPUT);
-	pinMode(MOSI, OUTPUT);
-	pinMode(MISO, INPUT);
-
-
-	#ifdef	PRR
-	PRR &= ~(1<<PRSPI);
-	#elif defined PRR0
-	PRR0 &= ~(1<<PRSPI);
-	#endif
-
-	const unsigned int del = 100;
-
-	SPCR = (1<<MSTR) | (1<<SPE) | (1<<SPR0);
-
-	delayMicroseconds(del);
-	SPI_transfer(0xff); // initiate transaction
-	delayMicroseconds(del);
-
-
-	SPI_transfer(22); // request Temp_E0
-
-	delayMicroseconds(del);
-
-	SPI_transfer(pwm); //write LSB
-
-	delayMicroseconds(del);
-
-	SPI_transfer(0); //write MSB
-
-	delayMicroseconds(del);
-
-	SPI_transfer(0xfe); // End transaction
-	delayMicroseconds(del);
-	SPCR &= ~_BV(SPE);
-
+  switch(code){
+	case TEMP_E0: return tempE0; break;
+	case TEMP_E1: return tempE1; break;
+	case HEATER_E0: heaterE0 = value; break;
+	case FAN: fanSpeed = value; break;
+	case HEATER_E1: heaterE1 = value; break;
+  }
+  return 0;
 }
 
 #endif
@@ -1271,9 +1255,9 @@ ISR(TIMER0_COMPB_vect)
     #endif
   }
 
-  #ifdef HEATER_0_USES_NANOPROTO
-  	  write_nanoProto(soft_pwm[0]);
-  #endif
+  //#ifdef HEATER_0_USES_NANOPROTO
+  //	  write_nanoProto(soft_pwm[0]);
+  //#endif
 
 
   #if defined(HEATER_0_PIN) && (HEATER_0_PIN > -1)
@@ -1320,7 +1304,7 @@ ISR(TIMER0_COMPB_vect)
         raw_temp_0_value += ADC;
       #endif
 	  #ifdef HEATER_0_USES_NANOPROTO
-        raw_temp_0_value += read_nanoProto();
+        raw_temp_0_value += transfer_nanoProto(TEMP_E0);
       #endif
       #ifdef HEATER_0_USES_MAX6675 // TODO remove the blocking
         raw_temp_0_value = read_max6675();
