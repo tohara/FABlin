@@ -1086,7 +1086,6 @@ byte SPI_transfer(byte value) {
 #ifdef HEATER_0_USES_NANOPROTO
 #define NANOPROTO_HEAT_INTERVAL 200
 long nanoProto_previous_millis = 0;
-int nanoProto_temp = 140;
 enum nanoProtoCode {TEMP_E0 = 10, TEMP_E1, HEATER_E0 = 20, FAN, HEATER_E1};
 
 int transfer_nanoProto(byte code, byte value = 0)
@@ -1095,7 +1094,7 @@ int transfer_nanoProto(byte code, byte value = 0)
 	static int tempE0 = 140;
 	static int tempE1 = 140;
 	static byte heaterE0 = 0;
-	static byte fanSpeed = 0;
+	static byte nozzleFan = 0;
 	static byte heaterE1 = 0;
 
   if (millis() - nanoProto_previous_millis < NANOPROTO_HEAT_INTERVAL){
@@ -1103,7 +1102,7 @@ int transfer_nanoProto(byte code, byte value = 0)
 		  case 10: return tempE0; break;
 		  case 11: return tempE1; break;
 		  case 20: heaterE0 = value; break;
-		  case 21: fanSpeed = value; break;
+		  case 21: nozzleFan = value; break;
 		  case 22: heaterE1 = value; break;
 	  }
 	  return 0;
@@ -1124,6 +1123,8 @@ int transfer_nanoProto(byte code, byte value = 0)
   #endif
 
   const unsigned int del = 100;
+  byte recBuffer[4] = {};
+  byte checksum = 0;
 
   SPCR = (1<<MSTR) | (1<<SPE) | (1<<SPR0);
 
@@ -1132,29 +1133,38 @@ int transfer_nanoProto(byte code, byte value = 0)
   delayMicroseconds(del);
 
 
-  SPI_transfer(10); // request Temp_E0
+  recBuffer[0] = SPI_transfer(heaterE0); // Send heaterE0, read tempE0 LSB
 
   delayMicroseconds(del);
 
-  byte byteLSB = SPI_transfer(0); //read LSB
+  recBuffer[1] = SPI_transfer(nozzleFan); // Send fanSpeed, read tempE0 MSB
 
   delayMicroseconds(del);
 
-  byte byteMSB = SPI_transfer(0); //read MSB
+  recBuffer[2] = SPI_transfer(heaterE1); // Send heaterE1, read tempE1 LSB
 
   delayMicroseconds(del);
 
-  SPI_transfer(0xfe); // End transaction
+  recBuffer[3] = SPI_transfer(0); // Send zero, read tempE1 MSB
+
   delayMicroseconds(del);
+
+  checksum = SPI_transfer(byte(heaterE0 + nozzleFan + heaterE1)); // Send checksum, read checksum
+
   SPCR &= ~_BV(SPE);
 
-  tempE0 = (byteLSB | byteMSB << 8);
+  if(checksum == byte(recBuffer[0] +recBuffer[1] + recBuffer[2] + recBuffer[3])){
+	  tempE0 = (recBuffer[0] | recBuffer[1] << 8);
+	  tempE1 = (recBuffer[2] | recBuffer[3] << 8);
+  }
+
+
 
   switch(code){
   	  case 10: return tempE0; break;
 	  case 11: return tempE1; break;
 	  case 20: heaterE0 = value; break;
-	  case 21: fanSpeed = value; break;
+	  case 21: nozzleFan = value; break;
 	  case 22: heaterE1 = value; break;
   }
   return 0;
@@ -1255,9 +1265,10 @@ ISR(TIMER0_COMPB_vect)
     #endif
   }
 
-  //#ifdef HEATER_0_USES_NANOPROTO
-  //	  write_nanoProto(soft_pwm[0]);
-  //#endif
+  #ifdef HEATER_0_USES_NANOPROTO
+  	  transfer_nanoProto(20, soft_pwm[0]);
+  	  transfer_nanoProto(21, fanSpeedSoftPwm);
+  #endif
 
 
   #if defined(HEATER_0_PIN) && (HEATER_0_PIN > -1)
