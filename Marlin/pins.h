@@ -935,6 +935,11 @@
 #define SERVO0_PIN         11
 #define SERVO1_PIN         6
 
+//SPI
+#define SCK_PIN          52
+#define MISO_PIN         50
+#define MOSI_PIN         51
+
 #endif //MOTHERBOARD == 25
 
 

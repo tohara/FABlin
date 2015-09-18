@@ -914,6 +914,11 @@ void tp_init()
 #endif
   }
 #endif //BED_MAXTEMP
+
+  SET_OUTPUT(SCK_PIN);
+  SET_OUTPUT(MOSI_PIN);
+  SET_INPUT(MISO_PIN);
+
 }
 
 void setWatch() 
@@ -1110,9 +1115,13 @@ int transfer_nanoProto(byte code, byte value = 0)
 
   nanoProto_previous_millis = millis();
 
-  pinMode(SCK, OUTPUT);
-  pinMode(MOSI, OUTPUT);
-  pinMode(MISO, INPUT);
+//  SET_OUTPUT(52);
+//  SET_OUTPUT(51);
+//  SET_INPUT(50);
+
+//  pinMode(SCK, OUTPUT);
+//  pinMode(MOSI, OUTPUT);
+//  pinMode(MISO, INPUT);
 
 
 
@@ -1122,11 +1131,11 @@ int transfer_nanoProto(byte code, byte value = 0)
     PRR0 &= ~(1<<PRSPI);
   #endif
 
-  const unsigned int del = 100;
+  const unsigned int del = 50;
   byte recBuffer[4] = {};
-  byte checksum = 0;
+  byte checksumRec = 0;
 
-  SPCR = (1<<MSTR) | (1<<SPE) | (1<<SPR0);
+  SPCR = (1<<MSTR) | (1<<SPE) | (1<<SPR0) | (1<<SPR1);
 
   delayMicroseconds(del);
   SPI_transfer(0xff); // initiate transaction
@@ -1149,11 +1158,14 @@ int transfer_nanoProto(byte code, byte value = 0)
 
   delayMicroseconds(del);
 
-  checksum = SPI_transfer(byte(heaterE0 + nozzleFan + heaterE1)); // Send checksum, read checksum
+
+  byte checksumSend = byte(heaterE0 + nozzleFan + heaterE1);
+  if(checksumSend == 255) { checksumSend -= 1;}
+  checksumRec = SPI_transfer(checksumSend); // Send checksum, read checksum
 
   SPCR &= ~_BV(SPE);
 
-  if(checksum == byte(recBuffer[0] +recBuffer[1] + recBuffer[2] + recBuffer[3])){
+  if(checksumRec == byte(recBuffer[0] +recBuffer[1] + recBuffer[2] + recBuffer[3])){
 	  tempE0 = (recBuffer[0] | recBuffer[1] << 8);
 	  tempE1 = (recBuffer[2] | recBuffer[3] << 8);
   }
@@ -1267,7 +1279,7 @@ ISR(TIMER0_COMPB_vect)
 
   #ifdef HEATER_0_USES_NANOPROTO
   	  transfer_nanoProto(20, soft_pwm[0]);
-  	  transfer_nanoProto(21, fanSpeedSoftPwm);
+  	  transfer_nanoProto(21, soft_pwm_fan);
   #endif
 
 
