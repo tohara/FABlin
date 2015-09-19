@@ -158,9 +158,9 @@
 // When temperature exceeds max temp, your heater will be switched off.
 // This feature exists to protect your hotend from overheating accidentally, but *NOT* from thermistor short/failure!
 // You should use MINTEMP for thermistor short/failure protection.
-#define HEATER_0_MAXTEMP 235
-#define HEATER_1_MAXTEMP 235
-#define HEATER_2_MAXTEMP 235
+#define HEATER_0_MAXTEMP 300
+#define HEATER_1_MAXTEMP 300
+#define HEATER_2_MAXTEMP 300
 #define BED_MAXTEMP 110
 
 // If your bed has low resistance e.g. .6 ohm and throws the fuse you can duty cycle it to reduce the
@@ -327,11 +327,11 @@ extern bool Z_MAX_ENDSTOP_INVERTING;
 #define max_software_endstops false  // If true, axis won't move to coordinates greater than the defined lengths below.
 
 // Travel limits after homing
-#define X_MAX_POS 214
+#define X_MAX_POS 201 //214
 #define X_MIN_POS 0
 #define Y_MAX_POS 234
 #define Y_MIN_POS 0
-#define Z_MAX_POS 241.5
+#define Z_MAX_POS 203 //241.5
 #define Z_MIN_POS 0
 
 #define X_MAX_LENGTH (X_MAX_POS - X_MIN_POS)
@@ -379,8 +379,8 @@ extern bool Z_MAX_ENDSTOP_INVERTING;
 //    #define FRONT_PROBE_BED_POSITION -58
     
     // set the rectangle in which to probe
-    #define LEFT_PROBE_BED_POSITION 20
-    #define RIGHT_PROBE_BED_POSITION 198
+    #define LEFT_PROBE_BED_POSITION 7 //20
+    #define RIGHT_PROBE_BED_POSITION 185 //198
     #define BACK_PROBE_BED_POSITION 233
     #define FRONT_PROBE_BED_POSITION 65
 

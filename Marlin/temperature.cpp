@@ -1089,7 +1089,7 @@ byte SPI_transfer(byte value) {
 }
 
 #ifdef HEATER_0_USES_NANOPROTO
-#define NANOPROTO_HEAT_INTERVAL 200
+#define NANOPROTO_INTERVAL 20
 long nanoProto_previous_millis = 0;
 enum nanoProtoCode {TEMP_E0 = 10, TEMP_E1, HEATER_E0 = 20, FAN, HEATER_E1};
 
@@ -1101,28 +1101,28 @@ int transfer_nanoProto(byte code, byte value = 0)
 	static byte heaterE0 = 0;
 	static byte nozzleFan = 0;
 	static byte heaterE1 = 0;
+	static int state = 0;
+	const unsigned int del = 50;
+	static byte recBuffer[4] = {};
+	byte checksumRec = 0;
+	byte checksumSend = 0;
+	static int watchdog = 0;
 
-  if (millis() - nanoProto_previous_millis < NANOPROTO_HEAT_INTERVAL){
+  switch(code){
+	  case 20: heaterE0 = value; break;
+	  case 21: nozzleFan = value; break;
+	  case 22: heaterE1 = value; break;
+  }
+
+  if (millis() - nanoProto_previous_millis < NANOPROTO_INTERVAL){
 	  switch(code){
 		  case 10: return tempE0; break;
 		  case 11: return tempE1; break;
-		  case 20: heaterE0 = value; break;
-		  case 21: nozzleFan = value; break;
-		  case 22: heaterE1 = value; break;
 	  }
 	  return 0;
   }
 
   nanoProto_previous_millis = millis();
-
-//  SET_OUTPUT(52);
-//  SET_OUTPUT(51);
-//  SET_INPUT(50);
-
-//  pinMode(SCK, OUTPUT);
-//  pinMode(MOSI, OUTPUT);
-//  pinMode(MISO, INPUT);
-
 
 
   #ifdef	PRR
@@ -1131,53 +1131,62 @@ int transfer_nanoProto(byte code, byte value = 0)
     PRR0 &= ~(1<<PRSPI);
   #endif
 
-  const unsigned int del = 50;
-  byte recBuffer[4] = {};
-  byte checksumRec = 0;
+
 
   SPCR = (1<<MSTR) | (1<<SPE) | (1<<SPR0) | (1<<SPR1);
 
   delayMicroseconds(del);
-  SPI_transfer(0xff); // initiate transaction
-  delayMicroseconds(del);
 
+  switch(state){
+  	  case 0:
+  		SPI_transfer(0xff); // initiate transaction
+  		state = 1;
+  		break;
 
-  recBuffer[0] = SPI_transfer(heaterE0); // Send heaterE0, read tempE0 LSB
+  	  case 1:
+  		recBuffer[0] = SPI_transfer(heaterE0); // Send heaterE0, read tempE0 LSB
+  		state = 2;
+  		break;
+  	  case 2:
+  		recBuffer[1] = SPI_transfer(nozzleFan); // Send fanSpeed, read tempE0 MSB
+  		state = 3;
+  		break;
+  	  case 3:
+  		recBuffer[2] = SPI_transfer(heaterE1); // Send heaterE1, read tempE1 LSB
+  		state = 4;
+  		break;
+  	  case 4:
+  		recBuffer[3] = SPI_transfer(0); // Send zero, read tempE1 MSB
+  		state = 5;
+  		break;
+  	  case 5:
+  		checksumSend = byte(heaterE0 + nozzleFan + heaterE1);
+  		if(checksumSend == 255) { checksumSend -= 1;}
+  		checksumRec = SPI_transfer(checksumSend); // Send checksum, read checksum
 
-  delayMicroseconds(del);
+  		if(checksumRec == byte(recBuffer[0] +recBuffer[1] + recBuffer[2] + recBuffer[3])){
+  			tempE0 = (recBuffer[0] | recBuffer[1] << 8);
+  			tempE1 = (recBuffer[2] | recBuffer[3] << 8);
+  			watchdog = 0;
+  		} else ++watchdog;
 
-  recBuffer[1] = SPI_transfer(nozzleFan); // Send fanSpeed, read tempE0 MSB
-
-  delayMicroseconds(del);
-
-  recBuffer[2] = SPI_transfer(heaterE1); // Send heaterE1, read tempE1 LSB
-
-  delayMicroseconds(del);
-
-  recBuffer[3] = SPI_transfer(0); // Send zero, read tempE1 MSB
-
-  delayMicroseconds(del);
-
-
-  byte checksumSend = byte(heaterE0 + nozzleFan + heaterE1);
-  if(checksumSend == 255) { checksumSend -= 1;}
-  checksumRec = SPI_transfer(checksumSend); // Send checksum, read checksum
+  		if(watchdog >= 20){
+  			tempE0 = 0;
+  			tempE1 = 0;
+  		}
+  		state = 0;
+  		break;
+  }
 
   SPCR &= ~_BV(SPE);
 
-  if(checksumRec == byte(recBuffer[0] +recBuffer[1] + recBuffer[2] + recBuffer[3])){
-	  tempE0 = (recBuffer[0] | recBuffer[1] << 8);
-	  tempE1 = (recBuffer[2] | recBuffer[3] << 8);
-  }
+
 
 
 
   switch(code){
   	  case 10: return tempE0; break;
 	  case 11: return tempE1; break;
-	  case 20: heaterE0 = value; break;
-	  case 21: nozzleFan = value; break;
-	  case 22: heaterE1 = value; break;
   }
   return 0;
 }
