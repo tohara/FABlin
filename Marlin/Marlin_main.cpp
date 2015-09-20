@@ -2338,7 +2338,7 @@ void process_commands()
       if(setTargetedHotend(104)){
         break;
       }
-      fanSpeed=255; //set fan on by default
+      //fanSpeed=255; //set fan on by default
       inactivity=false;
       if (code_seen('S')) setTargetHotend(code_value(), tmp_extruder);
 #ifdef DUAL_X_CARRIAGE
@@ -2421,7 +2421,7 @@ void process_commands()
         break;
       }
       LCD_MESSAGEPGM(MSG_HEATING);
-      fanSpeed=255; //fan on by default
+      //fanSpeed=255; //fan on by default
       inactivity=false;
       
       #ifdef AUTOTEMP
