@@ -15,7 +15,7 @@
 // User-specified version info of this build to display in [Pronterface, etc] terminal window during
 // startup. Implementation of an idea by Prof Braino to inform user that any changes made to this
 // build by the user have been successfully uploaded into firmware.
-#define STRING_BUILD_VERSION  "V 1.0.0091_NP"
+#define STRING_BUILD_VERSION  "V 1.0.0091_NP_v2"
 #define STRING_BUILD_DATE __DATE__ " " __TIME__ // build date and time
 #define STRING_CONFIG_H_AUTHOR "FABteam" // Who made the changes.
 
@@ -327,7 +327,7 @@ extern bool Z_MAX_ENDSTOP_INVERTING;
 #define max_software_endstops true  // If true, axis won't move to coordinates greater than the defined lengths below.
 
 // Travel limits after homing
-#define X_MAX_POS 201 //214
+#define X_MAX_POS 200 //214
 #define X_MIN_POS 0
 #define Y_MAX_POS 223
 #define Y_MIN_POS 0
